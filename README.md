@@ -1,0 +1,3 @@
+# myspringmvc
+实现springMVC核心逻辑
+dispatcherservlet用来管理各种资源并现实依赖注入，requestMapping找到指定的controller，viewresolver的视图解析功能在本例中并未实现
