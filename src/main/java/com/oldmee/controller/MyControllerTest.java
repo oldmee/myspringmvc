@@ -19,7 +19,7 @@ public class MyControllerTest {
     private HelloWorldService helloWorldService;
 
     @MyRequestPath("/hello")
-    public void hello(@MyParameter String name, @MyParameter int age) {
+    public void hello(@MyParameter("name") String name, @MyParameter("age") String age) {
         System.out.println("name:" + name + ", age:" + age);
     }
 
