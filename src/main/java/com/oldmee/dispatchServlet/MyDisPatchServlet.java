@@ -166,6 +166,8 @@ public class MyDisPatchServlet extends HttpServlet {
                     MyParameter parameter = (MyParameter) annotation;
                     Class clazzz = method.getParameterTypes()[index];
                     Object targetObject = null;
+
+                    // 实现参数类型的绑定
                     if (!clazzz.getName().contains("String")) {
                         targetObject = convertNumberToTargetClass(req.getParameter(parameter.value()), clazzz);
                     }
@@ -187,6 +189,8 @@ public class MyDisPatchServlet extends HttpServlet {
 
 
     private Object convertNumberToTargetClass(String object, Class targetClass) {
+
+        // 简单实现了Integer的情况，其他基本类型情况类似
         if (Integer.class == targetClass) {
             return Integer.valueOf(object);
         }
