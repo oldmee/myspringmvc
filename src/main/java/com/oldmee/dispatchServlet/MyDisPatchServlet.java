@@ -129,6 +129,7 @@ public class MyDisPatchServlet extends HttpServlet {
                     if (method.isAnnotationPresent(MyRequestPath.class)) { // 找到需要建立映射的方法
                         String urlPath = method.getAnnotation(MyRequestPath.class).value();
                         urlMethods.put(urlPath, method);
+                        urlControllers.put(urlPath, object);
                     }
                 }
             }
@@ -153,6 +154,7 @@ public class MyDisPatchServlet extends HttpServlet {
         String url = uri.replace(contPath, "");
 
         Method method = (Method) urlMethods.get(url);
+        Object cla = urlControllers.get(url);
         Class<?>[] clazzs = method.getParameterTypes();
         Object[] args = new Object[clazzs.length];
         int index = 0;
@@ -162,15 +164,18 @@ public class MyDisPatchServlet extends HttpServlet {
             for (Annotation annotation : annotations) {
                 if (MyParameter.class.isAssignableFrom(annotation.getClass())) {
                     MyParameter parameter = (MyParameter) annotation;
-                    args[index++] = req.getParameter(parameter.value());
+                    Class clazzz = method.getParameterTypes()[index];
+                    Object targetObject = null;
+                    if (!clazzz.getName().contains("String")) {
+                        targetObject = convertNumberToTargetClass(req.getParameter(parameter.value()), clazzz);
+                    }
+                    args[index++] = targetObject == null ? req.getParameter(parameter.value()) : targetObject;
                 }
             }
         }
 
-        Object o = beans.get("myControllerTest");//todo
-
         try {
-            method.invoke(o, args);
+            method.invoke(cla, args);
         } catch (IllegalAccessException e) {
             e.printStackTrace();
         } catch (InvocationTargetException e) {
@@ -180,8 +185,16 @@ public class MyDisPatchServlet extends HttpServlet {
     }
 
 
-    @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        this.doGet(req, resp);
+
+    private Object convertNumberToTargetClass(String object, Class targetClass) {
+        if (Integer.class == targetClass) {
+            return Integer.valueOf(object);
+        }
+        return null;
     }
+
+
+
+
+
 }

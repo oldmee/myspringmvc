@@ -19,8 +19,9 @@ public class MyControllerTest {
     private HelloWorldService helloWorldService;
 
     @MyRequestPath("/hello")
-    public void hello(@MyParameter("name") String name, @MyParameter("age") String age) {
-        System.out.println("name:" + name + ", age:" + age);
+    public void hello(@MyParameter("name") String name, @MyParameter("age") Integer age) {
+//        System.out.println("name:" + name + ", age:" + age);
+        System.out.println(name + age);
     }
 
 }
