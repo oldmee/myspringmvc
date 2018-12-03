@@ -2,11 +2,19 @@ package com.oldmee.dispatchServlet;
 
 import com.oldmee.anotation.Controvice;
 import com.oldmee.anotation.MyAutoWire;
+import com.oldmee.anotation.MyParameter;
 import com.oldmee.anotation.MyRequestPath;
 import com.oldmee.controller.MyControllerTest;
 
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import java.io.File;
+import java.io.IOException;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.util.ArrayList;
@@ -19,13 +27,14 @@ import java.util.Map;
  * @Description:
  * @Date: Create in 14:14 2018/12/1
  */
-public class MyDisPatchServlet {
+public class MyDisPatchServlet extends HttpServlet {
 
     private List<String> classNameWithPackageName = new ArrayList<String>();
     private Map<String, Object> beans = new HashMap();
     private Map<String, Object> urlControllers = new HashMap<>();
     private Map<String, Object> urlMethods = new HashMap<>();
 
+    @Override
     public void init() {
         scanAllAndAddToMap("com.oldmee");
         createInstances();
@@ -40,7 +49,7 @@ public class MyDisPatchServlet {
      * @param scanPath
      */
     private void scanAllAndAddToMap(String scanPath) {
-        URL url = getClass().getClassLoader().getResource(scanPath);
+        URL url = this.getClass().getClassLoader().getResource(scanPath.replace(".", "/"));
         File file = new File(url.getFile());
         File[] files = file.listFiles();
         for (File fi : files) {
@@ -114,18 +123,82 @@ public class MyDisPatchServlet {
 
         for (Object object : beans.values()) {
             Class clazz = object.getClass();
-            if (clazz.isAnnotationPresent(MyControllerTest.class)) {
+            if (clazz.isAnnotationPresent(Controvice.class)) {
                 Method[] methods = clazz.getMethods();
                 for (Method method : methods) {
                     if (method.isAnnotationPresent(MyRequestPath.class)) { // 找到需要建立映射的方法
                         String urlPath = method.getAnnotation(MyRequestPath.class).value();
-
+                        urlMethods.put(urlPath, method);
+                        urlControllers.put(urlPath, object);
                     }
                 }
             }
         }
 
     }
+
+
+    /**
+     * 把实参注入到形参中
+     *
+     * @param req
+     * @param resp
+     * @throws ServletException
+     * @throws IOException
+     */
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+
+        String contPath = req.getContextPath();
+        String uri = req.getRequestURI();
+        String url = uri.replace(contPath, "");
+
+        Method method = (Method) urlMethods.get(url);
+        Object cla = urlControllers.get(url);
+        Class<?>[] clazzs = method.getParameterTypes();
+        Object[] args = new Object[clazzs.length];
+        int index = 0;
+
+        for(Class c : clazzs) {
+            Annotation[] annotations = method.getParameterAnnotations()[index];
+            for (Annotation annotation : annotations) {
+                if (MyParameter.class.isAssignableFrom(annotation.getClass())) {
+                    MyParameter parameter = (MyParameter) annotation;
+                    Class clazzz = method.getParameterTypes()[index];
+                    Object targetObject = null;
+
+                    // 实现参数类型的绑定
+                    if (!clazzz.getName().contains("String")) {
+                        targetObject = convertNumberToTargetClass(req.getParameter(parameter.value()), clazzz);
+                    }
+                    args[index++] = targetObject == null ? req.getParameter(parameter.value()) : targetObject;
+                }
+            }
+        }
+
+        try {
+            method.invoke(cla, args);
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        } catch (InvocationTargetException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+
+
+    private Object convertNumberToTargetClass(String object, Class targetClass) {
+
+        // 简单实现了Integer的情况，其他基本类型情况类似
+        if (Integer.class == targetClass) {
+            return Integer.valueOf(object);
+        }
+        return null;
+    }
+
+
+
 
 
 }
